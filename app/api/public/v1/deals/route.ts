@@ -134,7 +134,13 @@ async function upsertContactForDeal(opts: {
 
   if (existing.data?.id) {
     if (name) base.name = name;
-    const { data, error } = await sb.from('contacts').update(base).eq('id', existing.data.id).select('id').single();
+    const { data, error } = await sb
+      .from('contacts')
+      .update(base)
+      .eq('organization_id', opts.organizationId)
+      .eq('id', existing.data.id)
+      .select('id')
+      .single();
     if (error) throw error;
     return data.id as string;
   }
@@ -171,17 +177,51 @@ export async function POST(request: Request) {
   if (!boardId) {
     return NextResponse.json({ error: 'Provide board_id or board_key', code: 'VALIDATION_ERROR' }, { status: 422 });
   }
+  // board_id pode ter vindo direto do body — confirmar que pertence a esta organização
+  {
+    const { data: boardCheck, error: boardCheckError } = await sb
+      .from('boards')
+      .select('id')
+      .eq('organization_id', auth.organizationId)
+      .eq('id', boardId)
+      .is('deleted_at', null)
+      .maybeSingle();
+    if (boardCheckError) return NextResponse.json({ error: boardCheckError.message, code: 'DB_ERROR' }, { status: 500 });
+    if (!boardCheck) return NextResponse.json({ error: 'Board not found', code: 'VALIDATION_ERROR' }, { status: 422 });
+  }
 
   let stageId = sanitizeUUID(parsed.data.stage_id);
   if (!stageId) {
     stageId = await resolveFirstStageId({ organizationId: auth.organizationId, boardId });
+  } else {
+    // stage_id pode ter vindo direto do body — confirmar que pertence a este board/organização
+    const { data: stageCheck, error: stageCheckError } = await sb
+      .from('board_stages')
+      .select('id')
+      .eq('organization_id', auth.organizationId)
+      .eq('board_id', boardId)
+      .eq('id', stageId)
+      .maybeSingle();
+    if (stageCheckError) return NextResponse.json({ error: stageCheckError.message, code: 'DB_ERROR' }, { status: 500 });
+    if (!stageCheck) return NextResponse.json({ error: 'Stage not found for this board', code: 'VALIDATION_ERROR' }, { status: 422 });
   }
   if (!stageId) {
     return NextResponse.json({ error: 'No stages found for board', code: 'VALIDATION_ERROR' }, { status: 422 });
   }
 
   let contactId = sanitizeUUID(parsed.data.contact_id);
-  if (!contactId && parsed.data.contact) {
+  if (contactId) {
+    // contact_id pode ter vindo direto do body — confirmar que pertence a esta organização
+    const { data: contactCheck, error: contactCheckError } = await sb
+      .from('contacts')
+      .select('id')
+      .eq('organization_id', auth.organizationId)
+      .eq('id', contactId)
+      .is('deleted_at', null)
+      .maybeSingle();
+    if (contactCheckError) return NextResponse.json({ error: contactCheckError.message, code: 'DB_ERROR' }, { status: 500 });
+    if (!contactCheck) return NextResponse.json({ error: 'Contact not found', code: 'VALIDATION_ERROR' }, { status: 422 });
+  } else if (parsed.data.contact) {
     try {
       contactId = await upsertContactForDeal({ organizationId: auth.organizationId, contact: parsed.data.contact });
     } catch (e: any) {
@@ -190,6 +230,20 @@ export async function POST(request: Request) {
   }
   if (!contactId) {
     return NextResponse.json({ error: 'Provide contact_id or contact', code: 'VALIDATION_ERROR' }, { status: 422 });
+  }
+
+  let clientCompanyId = sanitizeUUID(parsed.data.client_company_id) || null;
+  if (clientCompanyId) {
+    // client_company_id vem direto do body — confirmar que pertence a esta organização
+    const { data: companyCheck, error: companyCheckError } = await sb
+      .from('crm_companies')
+      .select('id')
+      .eq('organization_id', auth.organizationId)
+      .eq('id', clientCompanyId)
+      .is('deleted_at', null)
+      .maybeSingle();
+    if (companyCheckError) return NextResponse.json({ error: companyCheckError.message, code: 'DB_ERROR' }, { status: 500 });
+    if (!companyCheck) return NextResponse.json({ error: 'Client company not found', code: 'VALIDATION_ERROR' }, { status: 422 });
   }
 
   const now = new Date().toISOString();
@@ -201,7 +255,7 @@ export async function POST(request: Request) {
     board_id: boardId,
     stage_id: stageId,
     contact_id: contactId,
-    client_company_id: sanitizeUUID(parsed.data.client_company_id) || null,
+    client_company_id: clientCompanyId,
     is_won: false,
     is_lost: false,
     created_at: now,

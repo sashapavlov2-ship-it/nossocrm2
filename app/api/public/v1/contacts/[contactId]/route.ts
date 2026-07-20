@@ -94,7 +94,20 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ contactId
   if (parsed.data.source !== undefined) updates.source = normalizeText(parsed.data.source);
   if (parsed.data.notes !== undefined) updates.notes = normalizeText(parsed.data.notes);
   if (parsed.data.client_company_id !== undefined) {
-    updates.client_company_id = parsed.data.client_company_id === null ? null : (sanitizeUUID(parsed.data.client_company_id) || null);
+    const cid = parsed.data.client_company_id === null ? null : (sanitizeUUID(parsed.data.client_company_id) || null);
+    if (cid) {
+      const sbCheck = createStaticAdminClient();
+      const companyCheck = await sbCheck
+        .from('crm_companies')
+        .select('id')
+        .eq('organization_id', auth.organizationId)
+        .eq('id', cid)
+        .is('deleted_at', null)
+        .maybeSingle();
+      if (companyCheck.error) return NextResponse.json({ error: companyCheck.error.message, code: 'DB_ERROR' }, { status: 500 });
+      if (!companyCheck.data) return NextResponse.json({ error: 'Client company not found', code: 'VALIDATION_ERROR' }, { status: 422 });
+    }
+    updates.client_company_id = cid;
   }
   if (parsed.data.birth_date !== undefined) {
     updates.birth_date = parsed.data.birth_date === null ? null : toIsoDateString(parsed.data.birth_date);

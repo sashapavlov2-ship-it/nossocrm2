@@ -88,6 +88,17 @@ CREATE TABLE IF NOT EXISTS public.profiles (
 
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
+-- Organização do utilizador autenticado, derivada do JWT via profiles (nunca de
+-- parâmetro). Definida aqui, logo após profiles, porque toda policy de isolamento
+-- por organização no resto deste ficheiro depende dela já existir.
+CREATE OR REPLACE FUNCTION public.current_org_id()
+RETURNS UUID
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $$ select organization_id from public.profiles where id = auth.uid() $$;
+
 -- -----------------------------------------------------------------------------
 -- 4. LIFECYCLE_STAGES (Estágios do funil - GLOBAL)
 -- -----------------------------------------------------------------------------
@@ -563,6 +574,8 @@ CREATE TABLE IF NOT EXISTS public.ai_prompt_templates (
 );
 
 ALTER TABLE public.ai_prompt_templates ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "org_isolation" ON public.ai_prompt_templates;
+CREATE POLICY "org_isolation" ON public.ai_prompt_templates FOR ALL TO authenticated USING (organization_id = current_org_id()) WITH CHECK (organization_id = current_org_id());
 
 CREATE INDEX IF NOT EXISTS idx_ai_prompt_templates_org_key ON public.ai_prompt_templates(organization_id, key);
 CREATE INDEX IF NOT EXISTS idx_ai_prompt_templates_org_key_active ON public.ai_prompt_templates(organization_id, key, is_active);
@@ -622,6 +635,8 @@ CREATE TABLE IF NOT EXISTS public.ai_feature_flags (
 );
 
 ALTER TABLE public.ai_feature_flags ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "org_isolation" ON public.ai_feature_flags;
+CREATE POLICY "org_isolation" ON public.ai_feature_flags FOR ALL TO authenticated USING (organization_id = current_org_id()) WITH CHECK (organization_id = current_org_id());
 
 CREATE UNIQUE INDEX IF NOT EXISTS ai_feature_flags_org_key_unique
   ON public.ai_feature_flags(organization_id, key);
@@ -804,20 +819,25 @@ BEGIN
 END;
 $$;
 
--- Funções para marcar deals como ganho/perdido (simplificadas)
+-- Funções para marcar deals como ganho/perdido (com filtro de organização;
+-- current_org_id() já foi definida logo após a criação de profiles, no topo do ficheiro)
 CREATE OR REPLACE FUNCTION public.mark_deal_won(deal_id UUID)
 RETURNS VOID
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path TO 'public'
 AS $$
+DECLARE v_org UUID;
 BEGIN
-    UPDATE public.deals 
-    SET 
+    v_org := current_org_id();
+    IF v_org IS NULL THEN RAISE EXCEPTION 'not_authenticated' USING ERRCODE = 'insufficient_privilege'; END IF;
+    UPDATE public.deals
+    SET
         is_won = TRUE,
         is_lost = FALSE,
         closed_at = NOW(),
         updated_at = NOW()
-    WHERE id = deal_id;
+    WHERE id = deal_id AND organization_id = v_org;
 END;
 $$;
 
@@ -825,16 +845,20 @@ CREATE OR REPLACE FUNCTION public.mark_deal_lost(deal_id UUID, reason TEXT DEFAU
 RETURNS VOID
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path TO 'public'
 AS $$
+DECLARE v_org UUID;
 BEGIN
-    UPDATE public.deals 
-    SET 
+    v_org := current_org_id();
+    IF v_org IS NULL THEN RAISE EXCEPTION 'not_authenticated' USING ERRCODE = 'insufficient_privilege'; END IF;
+    UPDATE public.deals
+    SET
         is_lost = TRUE,
         is_won = FALSE,
         loss_reason = COALESCE(reason, loss_reason),
         closed_at = NOW(),
         updated_at = NOW()
-    WHERE id = deal_id;
+    WHERE id = deal_id AND organization_id = v_org;
 END;
 $$;
 
@@ -842,15 +866,19 @@ CREATE OR REPLACE FUNCTION public.reopen_deal(deal_id UUID)
 RETURNS VOID
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path TO 'public'
 AS $$
+DECLARE v_org UUID;
 BEGIN
-    UPDATE public.deals 
-    SET 
+    v_org := current_org_id();
+    IF v_org IS NULL THEN RAISE EXCEPTION 'not_authenticated' USING ERRCODE = 'insufficient_privilege'; END IF;
+    UPDATE public.deals
+    SET
         is_won = FALSE,
         is_lost = FALSE,
         closed_at = NULL,
         updated_at = NOW()
-    WHERE id = deal_id;
+    WHERE id = deal_id AND organization_id = v_org;
 END;
 $$;
 
@@ -1056,21 +1084,22 @@ CREATE TRIGGER check_deal_duplicate_trigger
     EXECUTE FUNCTION check_deal_duplicate();
 
 -- #############################################################################
--- PARTE 6: ROW LEVEL SECURITY POLICIES (SIMPLIFICADAS)
+-- PARTE 6: ROW LEVEL SECURITY POLICIES (isolamento por organização)
 -- #############################################################################
 
--- ORGANIZATIONS (acesso livre para authenticated)
+-- ORGANIZATIONS: só a própria organização do utilizador
 DROP POLICY IF EXISTS "authenticated_access" ON public.organizations;
-CREATE POLICY "authenticated_access" ON public.organizations
+DROP POLICY IF EXISTS "org_self" ON public.organizations;
+CREATE POLICY "org_self" ON public.organizations
     FOR ALL TO authenticated
-    USING (deleted_at IS NULL)
-    WITH CHECK (true);
+    USING (id = current_org_id())
+    WITH CHECK (id = current_org_id());
 
--- PROFILES
+-- PROFILES: próprio perfil ou perfis da mesma organização
 DROP POLICY IF EXISTS "profiles_select" ON public.profiles;
 CREATE POLICY "profiles_select" ON public.profiles
     FOR SELECT TO authenticated
-    USING (true);
+    USING (id = auth.uid() OR organization_id = current_org_id());
 
 DROP POLICY IF EXISTS "profiles_update" ON public.profiles;
 CREATE POLICY "profiles_update" ON public.profiles
@@ -1078,9 +1107,15 @@ CREATE POLICY "profiles_update" ON public.profiles
     USING (id = auth.uid())
     WITH CHECK (id = auth.uid());
 
--- USER SETTINGS
+DROP POLICY IF EXISTS "profiles_insert" ON public.profiles;
+CREATE POLICY "profiles_insert" ON public.profiles
+    FOR INSERT TO authenticated
+    WITH CHECK (id = auth.uid());
+
+-- USER SETTINGS: dados do próprio utilizador
 DROP POLICY IF EXISTS "user_settings_isolate" ON public.user_settings;
-CREATE POLICY "user_settings_isolate" ON public.user_settings
+DROP POLICY IF EXISTS "own_user" ON public.user_settings;
+CREATE POLICY "own_user" ON public.user_settings
     FOR ALL TO authenticated
     USING (user_id = auth.uid())
     WITH CHECK (user_id = auth.uid());
@@ -1107,12 +1142,13 @@ ALTER TABLE public.deal_notes ENABLE ROW LEVEL SECURITY;
 CREATE INDEX IF NOT EXISTS idx_deal_notes_deal ON public.deal_notes(deal_id);
 CREATE INDEX IF NOT EXISTS idx_deal_notes_created ON public.deal_notes(created_at DESC);
 
--- RLS: Todos usuários autenticados podem ler/escrever (single-tenant)
+-- RLS: isolamento via organização do deal associado
 DROP POLICY IF EXISTS "deal_notes_access" ON public.deal_notes;
-CREATE POLICY "deal_notes_access" ON public.deal_notes
+DROP POLICY IF EXISTS "via_deal_org" ON public.deal_notes;
+CREATE POLICY "via_deal_org" ON public.deal_notes
     FOR ALL TO authenticated
-    USING (true)
-    WITH CHECK (true);
+    USING (deal_id IN (SELECT deals.id FROM public.deals WHERE deals.organization_id = current_org_id()))
+    WITH CHECK (deal_id IN (SELECT deals.id FROM public.deals WHERE deals.organization_id = current_org_id()));
 
 -- -----------------------------------------------------------------------------
 -- 2. DEAL_FILES (Arquivos por Deal)
@@ -1132,12 +1168,13 @@ ALTER TABLE public.deal_files ENABLE ROW LEVEL SECURITY;
 
 CREATE INDEX IF NOT EXISTS idx_deal_files_deal ON public.deal_files(deal_id);
 
--- RLS
+-- RLS: isolamento via organização do deal associado
 DROP POLICY IF EXISTS "deal_files_access" ON public.deal_files;
-CREATE POLICY "deal_files_access" ON public.deal_files
+DROP POLICY IF EXISTS "via_deal_org" ON public.deal_files;
+CREATE POLICY "via_deal_org" ON public.deal_files
     FOR ALL TO authenticated
-    USING (true)
-    WITH CHECK (true);
+    USING (deal_id IN (SELECT deals.id FROM public.deals WHERE deals.organization_id = current_org_id()))
+    WITH CHECK (deal_id IN (SELECT deals.id FROM public.deals WHERE deals.organization_id = current_org_id()));
 
 -- -----------------------------------------------------------------------------
 -- 3. STORAGE BUCKET FOR DEAL FILES
@@ -1531,130 +1568,125 @@ CREATE TRIGGER on_auth_user_email_updated
     WHEN (OLD.email IS DISTINCT FROM NEW.email)
     EXECUTE FUNCTION public.handle_user_email_update();
 
--- RLS Policies for Boards (Added via fix)
-CREATE POLICY "Enable read access for authenticated users" ON public.boards FOR SELECT TO authenticated USING (true);
-CREATE POLICY "Enable insert access for authenticated users" ON public.boards FOR INSERT TO authenticated WITH CHECK (true);
-CREATE POLICY "Enable update access for authenticated users" ON public.boards FOR UPDATE TO authenticated USING (true);
-CREATE POLICY "Enable delete access for authenticated users" ON public.boards FOR DELETE TO authenticated USING (true);
+-- RLS Policies for Boards (isolamento por organização)
+DROP POLICY IF EXISTS "Enable read access for authenticated users" ON public.boards;
+DROP POLICY IF EXISTS "Enable insert access for authenticated users" ON public.boards;
+DROP POLICY IF EXISTS "Enable update access for authenticated users" ON public.boards;
+DROP POLICY IF EXISTS "Enable delete access for authenticated users" ON public.boards;
+DROP POLICY IF EXISTS "org_isolation" ON public.boards;
+CREATE POLICY "org_isolation" ON public.boards FOR ALL TO authenticated USING (organization_id = current_org_id()) WITH CHECK (organization_id = current_org_id());
 
--- RLS Policies for Board Stages (Added via fix)
-CREATE POLICY "Enable read access for authenticated users" ON public.board_stages FOR SELECT TO authenticated USING (true);
-CREATE POLICY "Enable insert access for authenticated users" ON public.board_stages FOR INSERT TO authenticated WITH CHECK (true);
-CREATE POLICY "Enable update access for authenticated users" ON public.board_stages FOR UPDATE TO authenticated USING (true);
-CREATE POLICY "Enable delete access for authenticated users" ON public.board_stages FOR DELETE TO authenticated USING (true);
+-- RLS Policies for Board Stages (isolamento por organização)
+DROP POLICY IF EXISTS "Enable read access for authenticated users" ON public.board_stages;
+DROP POLICY IF EXISTS "Enable insert access for authenticated users" ON public.board_stages;
+DROP POLICY IF EXISTS "Enable update access for authenticated users" ON public.board_stages;
+DROP POLICY IF EXISTS "Enable delete access for authenticated users" ON public.board_stages;
+DROP POLICY IF EXISTS "org_isolation" ON public.board_stages;
+CREATE POLICY "org_isolation" ON public.board_stages FOR ALL TO authenticated USING (organization_id = current_org_id()) WITH CHECK (organization_id = current_org_id());
 
--- RLS Policies for Core Tables (Added via audit fix)
--- Lifecycle Stages
-CREATE POLICY "Enable all access for authenticated users" ON public.lifecycle_stages FOR ALL TO authenticated USING (true);
+-- RLS Policies for Core Tables (isolamento por organização)
+-- Lifecycle Stages: enum global do sistema (Lead/MQL/Oportunidade/Cliente), sem organization_id, sem dados sensíveis — aberto por definição correta
+DROP POLICY IF EXISTS "Enable all access for authenticated users" ON public.lifecycle_stages;
+DROP POLICY IF EXISTS "lifecycle_open" ON public.lifecycle_stages;
+CREATE POLICY "lifecycle_open" ON public.lifecycle_stages FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
 -- CRM Companies
-CREATE POLICY "Enable all access for authenticated users" ON public.crm_companies FOR ALL TO authenticated USING (true);
+DROP POLICY IF EXISTS "Enable all access for authenticated users" ON public.crm_companies;
+DROP POLICY IF EXISTS "org_isolation" ON public.crm_companies;
+CREATE POLICY "org_isolation" ON public.crm_companies FOR ALL TO authenticated USING (organization_id = current_org_id()) WITH CHECK (organization_id = current_org_id());
 
 -- Contacts
-CREATE POLICY "Enable all access for authenticated users" ON public.contacts FOR ALL TO authenticated USING (true);
+DROP POLICY IF EXISTS "Enable all access for authenticated users" ON public.contacts;
+DROP POLICY IF EXISTS "org_isolation" ON public.contacts;
+CREATE POLICY "org_isolation" ON public.contacts FOR ALL TO authenticated USING (organization_id = current_org_id()) WITH CHECK (organization_id = current_org_id());
 
 -- Products
-CREATE POLICY "Enable all access for authenticated users" ON public.products FOR ALL TO authenticated USING (true);
+DROP POLICY IF EXISTS "Enable all access for authenticated users" ON public.products;
+DROP POLICY IF EXISTS "org_isolation" ON public.products;
+CREATE POLICY "org_isolation" ON public.products FOR ALL TO authenticated USING (organization_id = current_org_id()) WITH CHECK (organization_id = current_org_id());
 
 -- Deals
-CREATE POLICY "Enable all access for authenticated users" ON public.deals FOR ALL TO authenticated USING (true);
+DROP POLICY IF EXISTS "Enable all access for authenticated users" ON public.deals;
+DROP POLICY IF EXISTS "org_isolation" ON public.deals;
+CREATE POLICY "org_isolation" ON public.deals FOR ALL TO authenticated USING (organization_id = current_org_id()) WITH CHECK (organization_id = current_org_id());
 
 -- Deal Items
-CREATE POLICY "Enable all access for authenticated users" ON public.deal_items FOR ALL TO authenticated USING (true);
+DROP POLICY IF EXISTS "Enable all access for authenticated users" ON public.deal_items;
+DROP POLICY IF EXISTS "org_isolation" ON public.deal_items;
+CREATE POLICY "org_isolation" ON public.deal_items FOR ALL TO authenticated USING (organization_id = current_org_id()) WITH CHECK (organization_id = current_org_id());
 
 -- Activities
-CREATE POLICY "Enable all access for authenticated users" ON public.activities FOR ALL TO authenticated USING (true);
+DROP POLICY IF EXISTS "Enable all access for authenticated users" ON public.activities;
+DROP POLICY IF EXISTS "org_isolation" ON public.activities;
+CREATE POLICY "org_isolation" ON public.activities FOR ALL TO authenticated USING (organization_id = current_org_id()) WITH CHECK (organization_id = current_org_id());
 
 -- Tags
-CREATE POLICY "Enable all access for authenticated users" ON public.tags FOR ALL TO authenticated USING (true);
+DROP POLICY IF EXISTS "Enable all access for authenticated users" ON public.tags;
+DROP POLICY IF EXISTS "org_isolation" ON public.tags;
+CREATE POLICY "org_isolation" ON public.tags FOR ALL TO authenticated USING (organization_id = current_org_id()) WITH CHECK (organization_id = current_org_id());
 
 -- Custom Field Definitions
-CREATE POLICY "Enable all access for authenticated users" ON public.custom_field_definitions FOR ALL TO authenticated USING (true);
+DROP POLICY IF EXISTS "Enable all access for authenticated users" ON public.custom_field_definitions;
+DROP POLICY IF EXISTS "org_isolation" ON public.custom_field_definitions;
+CREATE POLICY "org_isolation" ON public.custom_field_definitions FOR ALL TO authenticated USING (organization_id = current_org_id()) WITH CHECK (organization_id = current_org_id());
 
 -- Leads
-CREATE POLICY "Enable all access for authenticated users" ON public.leads FOR ALL TO authenticated USING (true);
+DROP POLICY IF EXISTS "Enable all access for authenticated users" ON public.leads;
+DROP POLICY IF EXISTS "org_isolation" ON public.leads;
+CREATE POLICY "org_isolation" ON public.leads FOR ALL TO authenticated USING (organization_id = current_org_id()) WITH CHECK (organization_id = current_org_id());
 
--- AI Tables
-CREATE POLICY "Enable all access for authenticated users" ON public.ai_conversations FOR ALL TO authenticated USING (true);
-CREATE POLICY "Enable all access for authenticated users" ON public.ai_decisions FOR ALL TO authenticated USING (true);
-CREATE POLICY "Enable all access for authenticated users" ON public.ai_audio_notes FOR ALL TO authenticated USING (true);
-CREATE POLICY "Enable all access for authenticated users" ON public.ai_suggestion_interactions FOR ALL TO authenticated USING (true);
+-- AI Tables: dados do próprio utilizador, não da organização inteira
+DROP POLICY IF EXISTS "Enable all access for authenticated users" ON public.ai_conversations;
+DROP POLICY IF EXISTS "own_user" ON public.ai_conversations;
+CREATE POLICY "own_user" ON public.ai_conversations FOR ALL TO authenticated USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
+
+DROP POLICY IF EXISTS "Enable all access for authenticated users" ON public.ai_decisions;
+DROP POLICY IF EXISTS "own_user" ON public.ai_decisions;
+CREATE POLICY "own_user" ON public.ai_decisions FOR ALL TO authenticated USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
+
+DROP POLICY IF EXISTS "Enable all access for authenticated users" ON public.ai_audio_notes;
+DROP POLICY IF EXISTS "own_user" ON public.ai_audio_notes;
+CREATE POLICY "own_user" ON public.ai_audio_notes FOR ALL TO authenticated USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
+
+DROP POLICY IF EXISTS "Enable all access for authenticated users" ON public.ai_suggestion_interactions;
+DROP POLICY IF EXISTS "own_user" ON public.ai_suggestion_interactions;
+CREATE POLICY "own_user" ON public.ai_suggestion_interactions FOR ALL TO authenticated USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
 
 -- System Tables
--- Organization Invites (hardened)
+-- Organization Invites: isolamento por organização (simplificado em produção,
+-- substitui a distinção admin/member original)
 DROP POLICY IF EXISTS "Enable all access for authenticated users" ON public.organization_invites;
 DROP POLICY IF EXISTS "Allow public to validate invite tokens" ON public.organization_invites;
-
 DROP POLICY IF EXISTS "Admins can manage organization invites" ON public.organization_invites;
-CREATE POLICY "Admins can manage organization invites"
-    ON public.organization_invites
-    FOR ALL
-    TO authenticated
-    USING (
-        auth.uid() IN (
-            SELECT id FROM public.profiles
-            WHERE organization_id = organization_invites.organization_id
-            AND role = 'admin'
-        )
-    )
-    WITH CHECK (
-        auth.uid() IN (
-            SELECT id FROM public.profiles
-            WHERE organization_id = organization_invites.organization_id
-            AND role = 'admin'
-        )
-    );
-
 DROP POLICY IF EXISTS "Members can view organization invites" ON public.organization_invites;
-CREATE POLICY "Members can view organization invites"
-    ON public.organization_invites
-    FOR SELECT
-    TO authenticated
-    USING (
-        auth.uid() IN (
-            SELECT id FROM public.profiles
-            WHERE organization_id = organization_invites.organization_id
-        )
-    );
+DROP POLICY IF EXISTS "org_isolation" ON public.organization_invites;
+CREATE POLICY "org_isolation" ON public.organization_invites FOR ALL TO authenticated USING (organization_id = current_org_id()) WITH CHECK (organization_id = current_org_id());
 
--- Organization Settings
+-- Organization Settings: isolamento por organização (simplificado em produção,
+-- substitui a distinção admin/member original)
 DROP POLICY IF EXISTS "Admins can manage org settings" ON public.organization_settings;
-CREATE POLICY "Admins can manage org settings"
-        ON public.organization_settings
-        FOR ALL
-        TO authenticated
-        USING (
-                auth.uid() IN (
-                        SELECT id FROM public.profiles 
-                        WHERE organization_id = organization_settings.organization_id 
-                        AND role = 'admin'
-                )
-        )
-        WITH CHECK (
-                auth.uid() IN (
-                        SELECT id FROM public.profiles 
-                        WHERE organization_id = organization_settings.organization_id 
-                        AND role = 'admin'
-                )
-        );
-
 DROP POLICY IF EXISTS "Members can view org settings" ON public.organization_settings;
-CREATE POLICY "Members can view org settings"
-        ON public.organization_settings
-        FOR SELECT
-        TO authenticated
-        USING (
-                auth.uid() IN (
-                        SELECT id FROM public.profiles 
-                        WHERE organization_id = organization_settings.organization_id
-                )
-        );
+DROP POLICY IF EXISTS "org_isolation" ON public.organization_settings;
+CREATE POLICY "org_isolation" ON public.organization_settings FOR ALL TO authenticated USING (organization_id = current_org_id()) WITH CHECK (organization_id = current_org_id());
 
-CREATE POLICY "Enable all access for authenticated users" ON public.system_notifications FOR ALL TO authenticated USING (true);
-CREATE POLICY "Enable all access for authenticated users" ON public.rate_limits FOR ALL TO authenticated USING (true);
-CREATE POLICY "Enable all access for authenticated users" ON public.user_consents FOR ALL TO authenticated USING (true);
-CREATE POLICY "Enable all access for authenticated users" ON public.audit_logs FOR ALL TO authenticated USING (true);
-CREATE POLICY "Enable all access for authenticated users" ON security_alerts FOR ALL TO authenticated USING (true);
+DROP POLICY IF EXISTS "Enable all access for authenticated users" ON public.system_notifications;
+DROP POLICY IF EXISTS "org_isolation" ON public.system_notifications;
+CREATE POLICY "org_isolation" ON public.system_notifications FOR ALL TO authenticated USING (organization_id = current_org_id()) WITH CHECK (organization_id = current_org_id());
+
+-- rate_limits: RLS ligado sem policy (fail-closed, só service_role acede) — mantido tal como está em produção
+DROP POLICY IF EXISTS "Enable all access for authenticated users" ON public.rate_limits;
+
+DROP POLICY IF EXISTS "Enable all access for authenticated users" ON public.user_consents;
+DROP POLICY IF EXISTS "own_user" ON public.user_consents;
+CREATE POLICY "own_user" ON public.user_consents FOR ALL TO authenticated USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
+
+DROP POLICY IF EXISTS "Enable all access for authenticated users" ON public.audit_logs;
+DROP POLICY IF EXISTS "org_isolation" ON public.audit_logs;
+CREATE POLICY "org_isolation" ON public.audit_logs FOR ALL TO authenticated USING (organization_id = current_org_id()) WITH CHECK (organization_id = current_org_id());
+
+DROP POLICY IF EXISTS "Enable all access for authenticated users" ON security_alerts;
+DROP POLICY IF EXISTS "org_isolation" ON public.security_alerts;
+CREATE POLICY "org_isolation" ON public.security_alerts FOR ALL TO authenticated USING (organization_id = current_org_id()) WITH CHECK (organization_id = current_org_id());
 
 -- Storage Policies for Avatars (Added via audit fix)
 DROP POLICY IF EXISTS "avatar_upload" ON storage.objects;
@@ -1709,6 +1741,8 @@ CREATE TABLE IF NOT EXISTS public.api_keys (
 );
 
 ALTER TABLE public.api_keys ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "org_isolation" ON public.api_keys;
+CREATE POLICY "org_isolation" ON public.api_keys FOR ALL TO authenticated USING (organization_id = current_org_id()) WITH CHECK (organization_id = current_org_id());
 
 CREATE INDEX IF NOT EXISTS idx_api_keys_org ON public.api_keys(organization_id);
 CREATE INDEX IF NOT EXISTS idx_api_keys_org_active ON public.api_keys(organization_id) WHERE revoked_at IS NULL;
@@ -1739,11 +1773,14 @@ CREATE OR REPLACE FUNCTION public._api_key_make_token()
 RETURNS TEXT
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path TO 'public', 'extensions'
 AS $$
 DECLARE
   token TEXT;
 BEGIN
   -- base64url-ish, prefix human-friendly
+  -- gen_random_bytes vive em pgcrypto (schema "extensions" neste projeto) —
+  -- search_path tem de incluir "extensions", não só "public"
   token := 'ncrm_' || regexp_replace(
     replace(replace(encode(gen_random_bytes(24), 'base64'), '+', '-'), '/', '_'),
     '=',
@@ -1758,6 +1795,7 @@ CREATE OR REPLACE FUNCTION public._api_key_sha256_hex(token TEXT)
 RETURNS TEXT
 LANGUAGE sql
 SECURITY DEFINER
+SET search_path TO 'public', 'extensions'
 AS $$
   SELECT encode(digest(token, 'sha256'), 'hex');
 $$;
@@ -1933,6 +1971,8 @@ CREATE TABLE IF NOT EXISTS public.integration_inbound_sources (
 );
 
 ALTER TABLE public.integration_inbound_sources ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "org_isolation" ON public.integration_inbound_sources;
+CREATE POLICY "org_isolation" ON public.integration_inbound_sources FOR ALL TO authenticated USING (organization_id = current_org_id()) WITH CHECK (organization_id = current_org_id());
 
 -- Config: endpoints outbound (admin-only)
 CREATE TABLE IF NOT EXISTS public.integration_outbound_endpoints (
@@ -1948,6 +1988,8 @@ CREATE TABLE IF NOT EXISTS public.integration_outbound_endpoints (
 );
 
 ALTER TABLE public.integration_outbound_endpoints ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "org_isolation" ON public.integration_outbound_endpoints;
+CREATE POLICY "org_isolation" ON public.integration_outbound_endpoints FOR ALL TO authenticated USING (organization_id = current_org_id()) WITH CHECK (organization_id = current_org_id());
 
 -- Auditoria mínima: inbound events
 CREATE TABLE IF NOT EXISTS public.webhook_events_in (
@@ -1966,6 +2008,8 @@ CREATE TABLE IF NOT EXISTS public.webhook_events_in (
 );
 
 ALTER TABLE public.webhook_events_in ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "org_isolation" ON public.webhook_events_in;
+CREATE POLICY "org_isolation" ON public.webhook_events_in FOR ALL TO authenticated USING (organization_id = current_org_id()) WITH CHECK (organization_id = current_org_id());
 
 -- Dedupe inbound quando existir external_event_id
 CREATE UNIQUE INDEX IF NOT EXISTS webhook_events_in_dedupe
@@ -1986,6 +2030,8 @@ CREATE TABLE IF NOT EXISTS public.webhook_events_out (
 );
 
 ALTER TABLE public.webhook_events_out ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "org_isolation" ON public.webhook_events_out;
+CREATE POLICY "org_isolation" ON public.webhook_events_out FOR ALL TO authenticated USING (organization_id = current_org_id()) WITH CHECK (organization_id = current_org_id());
 
 -- Auditoria mínima: deliveries
 CREATE TABLE IF NOT EXISTS public.webhook_deliveries (
@@ -2001,6 +2047,8 @@ CREATE TABLE IF NOT EXISTS public.webhook_deliveries (
 );
 
 ALTER TABLE public.webhook_deliveries ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "org_isolation" ON public.webhook_deliveries;
+CREATE POLICY "org_isolation" ON public.webhook_deliveries FOR ALL TO authenticated USING (organization_id = current_org_id()) WITH CHECK (organization_id = current_org_id());
 
 -- Upgrade-safe: ajustar FKs para não bloquear deleções (evita 409 em deletes via PostgREST)
 ALTER TABLE public.webhook_events_in

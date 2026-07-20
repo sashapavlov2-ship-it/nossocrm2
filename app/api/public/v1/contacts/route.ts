@@ -159,7 +159,18 @@ export async function POST(request: Request) {
   if (lastInteraction === '__INVALID__') return NextResponse.json({ error: 'Invalid last_interaction', code: 'VALIDATION_ERROR' }, { status: 422 });
 
   let clientCompanyId = sanitizeUUID(parsed.data.client_company_id) || null;
-  if (!clientCompanyId && companyName) {
+  if (clientCompanyId) {
+    // client_company_id vem direto do body — confirmar que pertence a esta organização
+    const companyCheck = await sb
+      .from('crm_companies')
+      .select('id')
+      .eq('organization_id', auth.organizationId)
+      .eq('id', clientCompanyId)
+      .is('deleted_at', null)
+      .maybeSingle();
+    if (companyCheck.error) return NextResponse.json({ error: companyCheck.error.message, code: 'DB_ERROR' }, { status: 500 });
+    if (!companyCheck.data) return NextResponse.json({ error: 'Client company not found', code: 'VALIDATION_ERROR' }, { status: 422 });
+  } else if (companyName) {
     try {
       clientCompanyId = await resolveCompanyIdFromName({ organizationId: auth.organizationId, companyName });
     } catch (e: any) {
@@ -205,6 +216,7 @@ export async function POST(request: Request) {
     const { data, error } = await sb
       .from('contacts')
       .update(payload)
+      .eq('organization_id', auth.organizationId)
       .eq('id', existing.data.id)
       .select('id,name,email,phone,role,company_name,client_company_id,avatar,notes,status,stage,source,birth_date,last_interaction,last_purchase_date,total_value,created_at,updated_at')
       .single();

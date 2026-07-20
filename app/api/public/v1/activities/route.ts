@@ -87,6 +87,47 @@ export async function POST(request: Request) {
   }
 
   const sb = createStaticAdminClient();
+
+  // FKs opcionais vêm do body — confirmar que cada uma pertence a esta organização
+  const dealId = sanitizeUUID(parsed.data.deal_id) || null;
+  if (dealId) {
+    const { data: dealCheck, error: dealCheckError } = await sb
+      .from('deals')
+      .select('id')
+      .eq('organization_id', auth.organizationId)
+      .eq('id', dealId)
+      .is('deleted_at', null)
+      .maybeSingle();
+    if (dealCheckError) return NextResponse.json({ error: dealCheckError.message, code: 'DB_ERROR' }, { status: 500 });
+    if (!dealCheck) return NextResponse.json({ error: 'Deal not found', code: 'VALIDATION_ERROR' }, { status: 422 });
+  }
+
+  const contactId = sanitizeUUID(parsed.data.contact_id) || null;
+  if (contactId) {
+    const { data: contactCheck, error: contactCheckError } = await sb
+      .from('contacts')
+      .select('id')
+      .eq('organization_id', auth.organizationId)
+      .eq('id', contactId)
+      .is('deleted_at', null)
+      .maybeSingle();
+    if (contactCheckError) return NextResponse.json({ error: contactCheckError.message, code: 'DB_ERROR' }, { status: 500 });
+    if (!contactCheck) return NextResponse.json({ error: 'Contact not found', code: 'VALIDATION_ERROR' }, { status: 422 });
+  }
+
+  const clientCompanyId = sanitizeUUID(parsed.data.client_company_id) || null;
+  if (clientCompanyId) {
+    const { data: companyCheck, error: companyCheckError } = await sb
+      .from('crm_companies')
+      .select('id')
+      .eq('organization_id', auth.organizationId)
+      .eq('id', clientCompanyId)
+      .is('deleted_at', null)
+      .maybeSingle();
+    if (companyCheckError) return NextResponse.json({ error: companyCheckError.message, code: 'DB_ERROR' }, { status: 500 });
+    if (!companyCheck) return NextResponse.json({ error: 'Client company not found', code: 'VALIDATION_ERROR' }, { status: 422 });
+  }
+
   const insertPayload: any = {
     organization_id: auth.organizationId,
     title: normalizeText(parsed.data.title) || parsed.data.title,
@@ -94,9 +135,9 @@ export async function POST(request: Request) {
     type: normalizeText(parsed.data.type) || parsed.data.type,
     date: date.toISOString(),
     completed: false,
-    deal_id: sanitizeUUID(parsed.data.deal_id) || null,
-    contact_id: sanitizeUUID(parsed.data.contact_id) || null,
-    client_company_id: sanitizeUUID(parsed.data.client_company_id) || null,
+    deal_id: dealId,
+    contact_id: contactId,
+    client_company_id: clientCompanyId,
     created_at: now.toISOString(),
   };
 

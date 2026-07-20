@@ -104,6 +104,7 @@ export async function POST(request: Request) {
     const { data, error } = await sb
       .from('crm_companies')
       .update(payload)
+      .eq('organization_id', auth.organizationId)
       .eq('id', existing.data.id)
       .select('id,name,website,industry,created_at,updated_at')
       .single();
