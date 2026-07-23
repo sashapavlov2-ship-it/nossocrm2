@@ -130,7 +130,7 @@ export const PROMPT_CATALOG: PromptCatalogItem[] = [
   {
     key: 'task_leads_classify',
     title: 'Leads · Classificar temperatura',
-    usedBy: ['app/api/ai/classify-lead', 'supabase/functions/classify-lead', 'lib/ai/tools → classifyLead'],
+    usedBy: ['app/api/ai/classify-lead', 'lib/ai/tools → classifyLead'],
     defaultTemplate:
       `Classifica este lead e devolve APENAS JSON válido (sem markdown).\n\n` +
       `LEAD:\n` +
