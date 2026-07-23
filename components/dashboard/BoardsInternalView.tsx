@@ -13,14 +13,14 @@ const KANBAN_LANES = [
 ] as const;
 
 const MOCK_CARDS = [
-  { id: '1', columnId: 'prospect', company: 'Tech Solutions Ltda', value: 'R$ 45.000', tags: ['Urgente'], assignee: 'GR', date: '24/02' },
-  { id: '2', columnId: 'prospect', company: 'Indústria Beta', value: 'R$ 12.500', tags: ['NPS Alto'], assignee: 'TS', date: '25/02' },
-  { id: '3', columnId: 'qualificado', company: 'Comércio Delta', value: 'R$ 78.200', tags: ['Urgente', 'NPS Alto'], assignee: 'GR', date: '23/02' },
-  { id: '4', columnId: 'qualificado', company: 'Serviços Omega', value: 'R$ 33.000', tags: [], assignee: 'TS', date: '26/02' },
-  { id: '5', columnId: 'qualificado', company: 'Logística Norte', value: 'R$ 21.000', tags: ['Novo'], assignee: 'GR', date: '27/02' },
-  { id: '6', columnId: 'proposta', company: 'Varejo Sul', value: 'R$ 156.000', tags: ['Urgente'], assignee: 'TS', date: '20/02' },
-  { id: '7', columnId: 'ganho', company: 'Consultoria XYZ', value: 'R$ 89.000', tags: ['NPS Alto'], assignee: 'GR', date: '15/02' },
-  { id: '8', columnId: 'ganho', company: 'Software House', value: 'R$ 210.000', tags: [], assignee: 'TS', date: '10/02' },
+  { id: '1', columnId: 'prospect', company: 'Tech Solutions Ltda', value: '€ 45.000', tags: ['Urgente'], assignee: 'GR', date: '24/02' },
+  { id: '2', columnId: 'prospect', company: 'Indústria Beta', value: '€ 12.500', tags: ['NPS Alto'], assignee: 'TS', date: '25/02' },
+  { id: '3', columnId: 'qualificado', company: 'Comércio Delta', value: '€ 78.200', tags: ['Urgente', 'NPS Alto'], assignee: 'GR', date: '23/02' },
+  { id: '4', columnId: 'qualificado', company: 'Serviços Omega', value: '€ 33.000', tags: [], assignee: 'TS', date: '26/02' },
+  { id: '5', columnId: 'qualificado', company: 'Logística Norte', value: '€ 21.000', tags: ['Novo'], assignee: 'GR', date: '27/02' },
+  { id: '6', columnId: 'proposta', company: 'Varejo Sul', value: '€ 156.000', tags: ['Urgente'], assignee: 'TS', date: '20/02' },
+  { id: '7', columnId: 'ganho', company: 'Consultoria XYZ', value: '€ 89.000', tags: ['NPS Alto'], assignee: 'GR', date: '15/02' },
+  { id: '8', columnId: 'ganho', company: 'Software House', value: '€ 210.000', tags: [], assignee: 'TS', date: '10/02' },
 ];
 
 function KanbanCard({

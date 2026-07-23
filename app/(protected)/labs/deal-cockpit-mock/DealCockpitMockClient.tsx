@@ -72,7 +72,7 @@ const mock = {
   deal: {
     title: 'Proposta PROP-2',
     company: 'Empresa',
-    valueBRL: 10128.1,
+    valueEUR: 10128.1,
     stageId: 'negotiation',
     healthPct: 61,
     owner: { name: 'Eu' },
@@ -111,8 +111,8 @@ const initialTimeline: TimelineItem[] = [
 ];
 
 function formatAt(date = new Date()): string {
-  const d = date.toLocaleDateString('pt-BR');
-  const t = date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  const d = date.toLocaleDateString('pt-PT');
+  const t = date.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' });
   return `${d} · ${t}`;
 }
 
@@ -120,15 +120,15 @@ function uid(prefix = 'id'): string {
   return `${prefix}_${Math.random().toString(16).slice(2)}_${Date.now().toString(16)}`;
 }
 
-function formatCurrencyBRL(value: number): string {
+function formatCurrencyEUR(value: number): string {
   try {
-    return new Intl.NumberFormat('pt-BR', {
+    return new Intl.NumberFormat('pt-PT', {
       style: 'currency',
-      currency: 'BRL',
+      currency: 'EUR',
       maximumFractionDigits: 2,
     }).format(value);
   } catch {
-    return `R$ ${value.toFixed(2)}`;
+    return `€ ${value.toFixed(2)}`;
   }
 }
 
@@ -440,7 +440,7 @@ export default function DealCockpitMockClient() {
             </div>
 
             <div className="shrink-0 text-right">
-              <div className="text-sm font-semibold text-emerald-300">{formatCurrencyBRL(mock.deal.valueBRL)}</div>
+              <div className="text-sm font-semibold text-emerald-300">{formatCurrencyEUR(mock.deal.valueEUR)}</div>
               <div className="mt-0.5 text-[11px] text-slate-500">
                 Etapa: <span className="font-semibold text-slate-300">{activeStage.label}</span>
               </div>
@@ -695,7 +695,7 @@ export default function DealCockpitMockClient() {
                     <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
                       <div className="rounded-lg border border-white/10 bg-white/2 p-2">
                         <div className="text-slate-500">Valor</div>
-                        <div className="mt-0.5 font-semibold text-slate-100">{formatCurrencyBRL(mock.deal.valueBRL)}</div>
+                        <div className="mt-0.5 font-semibold text-slate-100">{formatCurrencyEUR(mock.deal.valueEUR)}</div>
                       </div>
                       <div className="rounded-lg border border-white/10 bg-white/2 p-2">
                         <div className="text-slate-500">Prioridade</div>

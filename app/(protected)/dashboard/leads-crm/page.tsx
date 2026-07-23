@@ -12,7 +12,7 @@ export default function DashboardLeadsCRMPage() {
       actions={
         <>
           <Link
-            href="#"
+            href="/dashboard/contatos"
             className="inline-flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-green-500 focus-visible:outline focus-visible:ring-2 focus-visible:ring-green-500/50"
           >
             <Plus size={18} aria-hidden />

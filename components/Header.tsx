@@ -2,10 +2,10 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import {
   ChevronDown,
   Search,
-  HelpCircle,
   Settings,
   Sparkles,
   Sun,
@@ -116,20 +116,13 @@ export function Header() {
             <Sparkles size={20} aria-hidden />
           </button>
           <NotificationPopover />
-          <button
-            type="button"
-            className="rounded-lg p-2 text-zinc-400 transition-colors hover:bg-white/5 hover:text-white focus-visible:outline focus-visible:ring-2 focus-visible:ring-green-500/50"
-            aria-label="Ajuda"
-          >
-            <HelpCircle size={20} aria-hidden />
-          </button>
-          <button
-            type="button"
+          <Link
+            href="/settings"
             className="rounded-lg p-2 text-zinc-400 transition-colors hover:bg-white/5 hover:text-white focus-visible:outline focus-visible:ring-2 focus-visible:ring-green-500/50"
             aria-label="Configurações"
           >
             <Settings size={20} aria-hidden />
-          </button>
+          </Link>
           <button
             type="button"
             onClick={toggleDarkMode}

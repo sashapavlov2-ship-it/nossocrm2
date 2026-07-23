@@ -41,7 +41,7 @@ export const generateProposalSkill = {
                 const proposalData = {
                     dealId: deal.id,
                     dealTitle: deal.title,
-                    dealValue: `R$ ${(deal.value || 0).toLocaleString('pt-BR')}`,
+                    dealValue: `€ ${(deal.value || 0).toLocaleString('pt-PT')}`,
                     contactName: contact?.name ?? 'N/A',
                     contactEmail: contact?.email ?? 'N/A',
                     company: contact?.company_name ?? 'N/A',
@@ -49,7 +49,7 @@ export const generateProposalSkill = {
                     customMessage: customMessage ?? 'Apresentamos nossa proposta comercial personalizada.',
                     paymentTerms,
                     validUntil: validUntil ?? '30 dias',
-                    generatedAt: new Date().toLocaleDateString('pt-BR'),
+                    generatedAt: new Date().toLocaleDateString('pt-PT'),
                 };
 
                 // Save proposal record to Supabase

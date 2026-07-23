@@ -187,7 +187,7 @@ export const PipelineAlertsModal: React.FC<PipelineAlertsModalProps> = ({
                           {deal.title}
                         </p>
                         <p className="text-sm text-slate-500 dark:text-slate-400">
-                          ${deal.value.toLocaleString()} • {deal.probability}% probabilidade
+                          €{deal.value.toLocaleString()} • {deal.probability}% probabilidade
                         </p>
                       </div>
                       <ChevronRight 

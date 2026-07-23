@@ -155,7 +155,7 @@ export const useSpeechRecognition = (): SpeechRecognitionHook => {
 
       recognitionInstance.continuous = true;
       recognitionInstance.interimResults = true;
-      recognitionInstance.lang = 'pt-BR';
+      recognitionInstance.lang = 'pt-PT';
 
       recognitionInstance.onstart = () => {
       };

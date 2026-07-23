@@ -55,7 +55,7 @@ function AgentBadge({ agent }: { agent: AgentRole }) {
 
 function StepCard({ step, index }: { step: OrchestratorStep; index: number }) {
     const [expanded, setExpanded] = useState(false);
-    const ts = new Date(step.timestamp).toLocaleTimeString('pt-BR');
+    const ts = new Date(step.timestamp).toLocaleTimeString('pt-PT');
 
     return (
         <div id={`step-${step.stepId}`} style={{

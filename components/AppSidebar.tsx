@@ -6,33 +6,18 @@ import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import {
   Sparkles,
-  Link as LinkIcon,
-  MessageSquare,
   Inbox,
   LayoutDashboard,
   KanbanSquare,
   ContactRound,
   CheckSquare,
-  Bot,
-  Headphones,
-  GraduationCap,
   Filter,
-  List,
-  Calendar,
-  UsersRound,
-  UserCircle,
-  CheckCircle,
   DollarSign,
   Package,
-  BarChart3,
   PieChart,
   Settings,
-  HelpCircle,
-  Bell,
   ChevronLeft,
   ChevronRight,
-  Zap,
-  MessageCircle,
   LogOut,
   User,
 } from 'lucide-react';
@@ -46,8 +31,6 @@ type NavItem = { to: string; label: string; icon: React.ComponentType<{ size?: n
 
 const BLOCK_1: NavItem[] = [
   { to: '/dashboard/james-ia', label: 'James IA', icon: Sparkles, prefetch: 'james-ia' },
-  { to: '#', label: 'Conectar WhatsApp', icon: LinkIcon },
-  { to: '#', label: 'Chat ao Vivo', icon: MessageSquare },
 ];
 
 const BLOCK_2: NavItem[] = [
@@ -56,43 +39,24 @@ const BLOCK_2: NavItem[] = [
   { to: '/dashboard/boards', label: 'Boards', icon: KanbanSquare, prefetch: 'boards' },
   { to: '/dashboard/contatos', label: 'Contatos', icon: ContactRound, prefetch: 'contacts' },
   { to: '/activities', label: 'Atividades', icon: CheckSquare, prefetch: 'activities' },
+  { to: '/dashboard/leads-crm', label: 'Leads CRM', icon: Filter },
 ];
 
 const BLOCK_3: NavItem[] = [
-  { to: '#', label: 'Agentes de IA', icon: Bot },
-  { to: '#', label: 'Atendentes', icon: Headphones },
-  { to: '#', label: 'Sistema de Treinamento', icon: GraduationCap },
-];
-
-const BLOCK_4: NavItem[] = [
-  { to: '/dashboard/leads-crm', label: 'Leads CRM', icon: Filter },
-  { to: '#', label: 'Leads Lista', icon: List },
-  { to: '#', label: 'Agenda', icon: Calendar },
-  { to: '#', label: 'Clientes', icon: UsersRound },
-  { to: '#', label: 'Colaboradores', icon: UserCircle },
-  { to: '#', label: 'Agendamentos Concluídos', icon: CheckCircle },
-];
-
-const BLOCK_5: NavItem[] = [
   { to: '/dashboard/financeiro', label: 'Financeiro', icon: DollarSign },
   { to: '/settings/products', label: 'Produtos e Serviços', icon: Package, prefetch: 'settings' },
-  { to: '#', label: 'Funil de Métricas', icon: BarChart3 },
   { to: '/reports', label: 'Relatórios', icon: PieChart, prefetch: 'reports' },
 ];
 
-const BLOCK_6: NavItem[] = [
+const BLOCK_4: NavItem[] = [
   { to: '/settings', label: 'Configurações', icon: Settings, prefetch: 'settings' },
-  { to: '#', label: 'FAQ & Ajuda', icon: HelpCircle },
-  { to: '#', label: 'Notificações', icon: Bell },
 ];
 
 const BLOCKS: Array<{ title: string; items: NavItem[] }> = [
-  { title: 'IA & Comunicação', items: BLOCK_1 },
-  { title: 'CRM Clássico', items: BLOCK_2 },
-  { title: 'Operação de IA & Equipe', items: BLOCK_3 },
-  { title: 'Leads & Vendas', items: BLOCK_4 },
-  { title: 'Gestão', items: BLOCK_5 },
-  { title: 'Suporte & Configs', items: BLOCK_6 },
+  { title: 'IA & Assistente', items: BLOCK_1 },
+  { title: 'CRM', items: BLOCK_2 },
+  { title: 'Gestão', items: BLOCK_3 },
+  { title: 'Sistema', items: BLOCK_4 },
 ];
 
 function NavButton({
@@ -115,15 +79,6 @@ function NavButton({
       : 'text-slate-600 hover:bg-slate-200 hover:text-slate-900 dark:text-zinc-400 dark:hover:bg-white/5 dark:hover:text-white'
   );
 
-  if (to === '#') {
-    return (
-      <button type="button" className={className} aria-current={isActive ? 'page' : undefined}>
-        <Icon size={20} className="shrink-0" aria-hidden />
-        <span>{label}</span>
-      </button>
-    );
-  }
-
   return (
     <Link
       href={to}
@@ -143,18 +98,27 @@ export function AppSidebar() {
   const pathname = usePathname();
   const { profile, signOut } = useAuth();
 
-  const displayName = profile?.nickname || profile?.first_name || profile?.email?.split('@')[0] || 'gustavo.rodrigo';
-  const displayEmail = profile?.email || 'gustavo.rodrigo@4u...';
+  const displayName = profile?.nickname || profile?.first_name || profile?.email?.split('@')[0] || 'Utilizador';
+  const displayEmail = profile?.email || '';
   const initials = (profile?.first_name && profile?.last_name
     ? `${profile.first_name[0]}${profile.last_name[0]}`
-    : profile?.nickname?.substring(0, 2) || profile?.email?.substring(0, 2) || 'GU'
+    : profile?.nickname?.substring(0, 2) || profile?.email?.substring(0, 2) || 'SR'
   ).toUpperCase();
 
   return (
+    <>
+      {/* Trigger strip — always visible on the left edge */}
+      {!isSidebarOpen && (
+        <div
+          className="fixed left-0 top-0 z-50 h-screen w-3 cursor-pointer"
+          onMouseEnter={() => setIsSidebarOpen(true)}
+          aria-hidden
+        />
+      )}
     <aside
       className={cn(
         'fixed left-0 top-0 z-50 flex h-screen w-64 flex-col border-r border-slate-200 bg-white/95 backdrop-blur-md transition-transform duration-300 ease-in-out dark:border-white/10 dark:bg-zinc-900/95 dark:shadow-[20px_0_30px_rgba(0,0,0,0.5)]',
-        isSidebarOpen ? 'translate-x-0 shadow-xl dark:shadow-[20px_0_30px_rgba(0,0,0,0.5)]' : '-translate-x-[calc(100%-12px)]'
+        isSidebarOpen ? 'translate-x-0 shadow-xl dark:shadow-[20px_0_30px_rgba(0,0,0,0.5)]' : '-translate-x-full'
       )}
       style={{ width: SIDEBAR_WIDTH }}
       onMouseEnter={() => setIsSidebarOpen(true)}
@@ -204,23 +168,6 @@ export function AppSidebar() {
       </nav>
 
       <div className="mt-auto shrink-0 border-t border-slate-200 pt-4 dark:border-white/5">
-        <div className="flex flex-wrap gap-2 px-3 pb-2">
-          <button
-            type="button"
-            className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:text-zinc-500 dark:hover:bg-white/5 dark:hover:text-zinc-300"
-          >
-            <Zap size={14} aria-hidden />
-            Modo Essencial
-          </button>
-          <button
-            type="button"
-            className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:text-zinc-500 dark:hover:bg-white/5 dark:hover:text-zinc-300"
-          >
-            <MessageCircle size={14} aria-hidden />
-            Suporte WhatsApp
-          </button>
-        </div>
-
         <div className="relative px-3 pb-4">
           <button
             type="button"
@@ -278,5 +225,6 @@ export function AppSidebar() {
         </div>
       </div>
     </aside>
+    </>
   );
 }

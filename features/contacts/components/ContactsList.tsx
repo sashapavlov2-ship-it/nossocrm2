@@ -4,8 +4,8 @@ import { Contact, Company, ContactSortableColumn } from '@/types';
 import { StageBadge } from './ContactsStageTabs';
 
 // Performance: reuse Intl formatters (they are relatively expensive to instantiate).
-const PT_BR_DATE_FORMATTER = new Intl.DateTimeFormat('pt-BR');
-const PT_BR_DATE_TIME_FORMATTER = new Intl.DateTimeFormat('pt-BR', {
+const PT_BR_DATE_FORMATTER = new Intl.DateTimeFormat('pt-PT');
+const PT_BR_DATE_TIME_FORMATTER = new Intl.DateTimeFormat('pt-PT', {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',

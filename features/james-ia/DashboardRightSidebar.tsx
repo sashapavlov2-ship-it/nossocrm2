@@ -37,7 +37,7 @@ export function DashboardRightSidebar() {
         <div className="flex flex-col gap-2 text-xs">
           <div className="flex items-center justify-between gap-2">
             <span className="text-zinc-500">CONSULTAS</span>
-            <span className="font-medium text-zinc-300">{data.consultas.toLocaleString('pt-BR')}</span>
+            <span className="font-medium text-zinc-300">{data.consultas.toLocaleString('pt-PT')}</span>
           </div>
           <div className="flex items-center justify-between gap-2">
             <span className="text-zinc-500">SINCRONIZAÇÃO</span>

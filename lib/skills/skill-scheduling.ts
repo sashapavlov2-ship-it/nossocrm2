@@ -46,7 +46,7 @@ export const schedulingSkill = {
                 if (error) return { success: false, error: error.message };
                 return {
                     success: true,
-                    message: `✅ Atividade "${data.title}" agendada para ${new Date(data.date).toLocaleString('pt-BR')}`,
+                    message: `✅ Atividade "${data.title}" agendada para ${new Date(data.date).toLocaleString('pt-PT')}`,
                     activityId: data.id,
                 };
             },
@@ -80,7 +80,7 @@ export const schedulingSkill = {
                         id: a.id,
                         title: a.title,
                         type: a.type,
-                        date: new Date(a.date).toLocaleString('pt-BR'),
+                        date: new Date(a.date).toLocaleString('pt-PT'),
                         deal: (a.deal as any)?.title ?? 'N/A',
                     })),
                 };

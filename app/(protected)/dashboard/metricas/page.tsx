@@ -5,10 +5,10 @@ import { InternalPageLayout } from '@/components/InternalPageLayout';
 import { TrendingUp, DollarSign, Users, Target, BarChart3, PieChart } from 'lucide-react';
 
 const SUMMARY_CARDS = [
-  { title: 'Receita Total', value: 'R$ 45.231,00', change: '+12%', icon: DollarSign, positive: true },
+  { title: 'Receita Total', value: '€ 45.231,00', change: '+12%', icon: DollarSign, positive: true },
   { title: 'Leads Qualificados', value: '1.247', change: '+8%', icon: Users, positive: true },
   { title: 'Taxa de Conversão', value: '23,4%', change: '-2%', icon: Target, positive: false },
-  { title: 'Ticket Médio', value: 'R$ 2.890', change: '+5%', icon: TrendingUp, positive: true },
+  { title: 'Ticket Médio', value: '€ 2.890', change: '+5%', icon: TrendingUp, positive: true },
 ];
 
 export default function DashboardMetricasPage() {

@@ -14,7 +14,7 @@ import { Board } from '@/types';
 import { useCRM } from '@/context/CRMContext';
 
 // Performance: reuse formatter instances.
-const BRL_CURRENCY_FORMATTER = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+const EUR_CURRENCY_FORMATTER = new Intl.NumberFormat('pt-PT', { style: 'currency', currency: 'EUR' });
 
 interface BoardStrategyHeaderProps {
   board: Board;
@@ -52,7 +52,7 @@ export const BoardStrategyHeader: React.FC<BoardStrategyHeaderProps> = ({ board 
     if (type === 'currency') {
       return {
         value: totalValue,
-        display: BRL_CURRENCY_FORMATTER.format(totalValue),
+        display: EUR_CURRENCY_FORMATTER.format(totalValue),
       };
     }
 
@@ -233,7 +233,7 @@ export const BoardStrategyHeader: React.FC<BoardStrategyHeaderProps> = ({ board 
                             })
                           }
                         >
-                          <option value="currency">R$ (Valor)</option>
+                          <option value="currency">€ (Valor)</option>
                           <option value="number"># (Qtd)</option>
                           <option value="percentage">% (Taxa)</option>
                         </select>

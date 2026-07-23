@@ -41,11 +41,11 @@ import type { Activity, Board, BoardStage, Contact, DealView } from '@/types';
 type Tab = 'chat' | 'notas' | 'scripts' | 'arquivos';
 
 // Performance: reuse Intl formatter instances (avoid creating them per call).
-const PT_BR_DATE_FORMATTER = new Intl.DateTimeFormat('pt-BR');
-const PT_BR_TIME_FORMATTER = new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', minute: '2-digit' });
-const BRL_CURRENCY_FORMATTER = new Intl.NumberFormat('pt-BR', {
+const PT_BR_DATE_FORMATTER = new Intl.DateTimeFormat('pt-PT');
+const PT_BR_TIME_FORMATTER = new Intl.DateTimeFormat('pt-PT', { hour: '2-digit', minute: '2-digit' });
+const EUR_CURRENCY_FORMATTER = new Intl.NumberFormat('pt-PT', {
   style: 'currency',
-  currency: 'BRL',
+  currency: 'EUR',
   maximumFractionDigits: 2,
 });
 
@@ -338,11 +338,11 @@ function formatAtISO(iso: string): string {
   return `${dd} · ${tt}`;
 }
 
-function formatCurrencyBRL(value: number): string {
+function formatCurrencyEUR(value: number): string {
   try {
-    return BRL_CURRENCY_FORMATTER.format(value);
+    return EUR_CURRENCY_FORMATTER.format(value);
   } catch {
-    return `R$ ${value.toFixed(2)}`;
+    return `€ ${value.toFixed(2)}`;
   }
 }
 
@@ -448,8 +448,8 @@ function normalizeReason(raw?: string) {
 }
 
 function formatSlot(d: Date) {
-  const day = d.toLocaleDateString('pt-BR', { weekday: 'short' });
-  const time = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  const day = d.toLocaleDateString('pt-PT', { weekday: 'short' });
+  const time = d.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' });
   return `${day} ${time}`;
 }
 
@@ -700,7 +700,7 @@ export default function DealCockpitClient({ dealId }: { dealId?: string }) {
   const templateVariables = useMemo(() => {
     const nome = selectedContact?.name?.split(' ')[0]?.trim() || 'Cliente';
     const empresa = selectedDeal?.clientCompanyName?.trim() || selectedDeal?.companyName?.trim() || 'Empresa';
-    const valor = typeof selectedDeal?.value === 'number' ? formatCurrencyBRL(selectedDeal.value) : '';
+    const valor = typeof selectedDeal?.value === 'number' ? formatCurrencyEUR(selectedDeal.value) : '';
     const produto = selectedDeal?.items?.[0]?.name?.trim() || selectedDeal?.title?.trim() || 'Produto';
 
     return {
@@ -1529,7 +1529,7 @@ export default function DealCockpitClient({ dealId }: { dealId?: string }) {
             </div>
 
             <div className="shrink-0 text-right">
-              <div className="text-sm font-semibold text-emerald-300">{formatCurrencyBRL(deal.value ?? 0)}</div>
+              <div className="text-sm font-semibold text-emerald-300">{formatCurrencyEUR(deal.value ?? 0)}</div>
               <div className="mt-0.5 text-[11px] text-slate-500">
                 Etapa: <span className="font-semibold text-slate-300">{activeStage?.label ?? '—'}</span>
               </div>
@@ -1824,7 +1824,7 @@ export default function DealCockpitClient({ dealId }: { dealId?: string }) {
                   <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
                     <div className="rounded-lg border border-white/10 bg-white/2 p-2">
                       <div className="text-slate-500">Valor</div>
-                      <div className="mt-0.5 font-semibold text-slate-100">{formatCurrencyBRL(deal.value ?? 0)}</div>
+                      <div className="mt-0.5 font-semibold text-slate-100">{formatCurrencyEUR(deal.value ?? 0)}</div>
                     </div>
                     <div className="rounded-lg border border-white/10 bg-white/2 p-2">
                       <div className="text-slate-500">Probabilidade</div>

@@ -64,7 +64,7 @@ export const PROMPT_CATALOG: PromptCatalogItem[] = [
       `Você é um coach de vendas analisando um deal de CRM. Seja DIRETO e ACIONÁVEL.\n` +
       `DEAL:\n` +
       `- Título: {{dealTitle}}\n` +
-      `- Valor: R$ {{dealValue}}\n` +
+      `- Valor: € {{dealValue}}\n` +
       `- Estágio: {{stageLabel}}\n` +
       `- Probabilidade: {{probability}}%\n` +
       `RETORNE:\n` +
@@ -126,6 +126,28 @@ export const PROMPT_CATALOG: PromptCatalogItem[] = [
       `- Não mostre IDs/UUIDs para o usuário final\n`,
     notes:
       'Importante: esse prompt é “sensível”. Mudanças ruins degradam o agente e podem quebrar fluxos. Ideal ter versionamento e botão “reset”.',
+  },
+  {
+    key: 'task_leads_classify',
+    title: 'Leads · Classificar temperatura',
+    usedBy: ['app/api/ai/classify-lead', 'supabase/functions/classify-lead', 'lib/ai/tools → classifyLead'],
+    defaultTemplate:
+      `Classifica este lead e devolve APENAS JSON válido (sem markdown).\n\n` +
+      `LEAD:\n` +
+      `- Nome: {{contactName}}\n` +
+      `- Origem: {{source}}\n` +
+      `- Último contacto: {{lastInteraction}}\n` +
+      `- Valor histórico: €{{totalValue}}\n` +
+      `- Dores: {{pains}}\n` +
+      `- Objeções: {{objections}}\n` +
+      `- Atividades recentes: {{recentActivities}}\n\n` +
+      `CRITÉRIOS:\n` +
+      `- QUENTE (70-100): respondeu recentemente, pediu proposta, interesse explícito\n` +
+      `- MORNO (40-69): algum interesse mas hesitante, contacto esporádico\n` +
+      `- FRIO (10-39): pouco engagement, muito tempo sem contacto\n` +
+      `- PERDIDO (0-9): cancelou, escolheu concorrente, desinteresse explícito\n\n` +
+      `JSON: {“temperature”:”QUENTE”|”MORNO”|”FRIO”|”PERDIDO”,”score”:0-100,”reasoning”:”1-2 frases”,”signals”:[“sinal1”]}`,
+    notes: 'Variáveis: contactName, source, lastInteraction, totalValue, pains, objections, recentActivities.',
   },
 ];
 

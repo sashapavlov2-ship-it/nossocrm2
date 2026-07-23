@@ -70,7 +70,7 @@ function getNextMock(): DashboardData {
 
 /** Formata data/hora em pt-BR para o header */
 export function formatDashboardDateTime(date: Date): string {
-  return date.toLocaleDateString('pt-BR', {
+  return date.toLocaleDateString('pt-PT', {
     weekday: 'long',
     day: 'numeric',
     month: 'long',

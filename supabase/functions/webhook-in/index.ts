@@ -446,6 +446,26 @@ Deno.serve(async (req) => {
       .eq("external_event_id", externalEventId);
   }
 
+  // Classifica lead automaticamente (best-effort, não bloqueia resposta)
+  if (contactId) {
+    try {
+      const classifyUrl = `${supabaseUrl}/functions/v1/classify-lead`;
+      fetch(classifyUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${serviceKey}`,
+        },
+        body: JSON.stringify({
+          contact_id: contactId,
+          organization_id: source.organization_id,
+        }),
+      }).catch(() => {/* silencioso */});
+    } catch {
+      // não bloqueia
+    }
+  }
+
   return json(200, {
     ok: true,
     message:

@@ -46,7 +46,7 @@ interface DealDetailModalProps {
 }
 
 // Performance: reuse date formatter instance.
-const PT_BR_DATE_FORMATTER = new Intl.DateTimeFormat('pt-BR');
+const PT_BR_DATE_FORMATTER = new Intl.DateTimeFormat('pt-PT');
 
 /**
  * Componente React `DealDetailModal`.

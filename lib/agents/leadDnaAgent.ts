@@ -35,15 +35,15 @@ const OBJECTION_PATTERNS = [
 ];
 
 const TICKET_PATTERNS = [
-    /(?:R\$|BRL)\s*([\d.,]+)\s*(?:mil|k|\/m[eê]s)?/gi,
-    /invest(?:imento|ir)\s+(?:de|em|até)\s+(R\$\s*[\d.,]+)/gi,
-    /ticket\s+(?:médio|de)\s+(R\$\s*[\d.,]+)/gi,
+    /(?:€|EUR)\s*([\d.,]+)\s*(?:mil|k|\/m[eê]s)?/gi,
+    /invest(?:imento|ir)\s+(?:de|em|até)\s+(€\s*[\d.,]+)/gi,
+    /ticket\s+(?:médio|de)\s+(€\s*[\d.,]+)/gi,
 ];
 
 const REVENUE_PATTERNS = [
-    /faturamento\s+(?:de|é|é de|mensal de|anual de)\s+(R\$\s*[\d.,\s]+(?:mil|k|M|mi|bilh)?)/gi,
-    /fatura\s+(R\$\s*[\d.,]+)/gi,
-    /receita\s+(?:de|anual de|mensal de)\s+(R\$\s*[\d.,]+)/gi,
+    /faturamento\s+(?:de|é|é de|mensal de|anual de)\s+(€\s*[\d.,\s]+(?:mil|k|M|mi|bilh)?)/gi,
+    /fatura\s+(€\s*[\d.,]+)/gi,
+    /receita\s+(?:de|anual de|mensal de)\s+(€\s*[\d.,]+)/gi,
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -64,7 +64,7 @@ function extractMatches(text: string, patterns: RegExp[]): string[] {
 }
 
 function parseMonetary(value: string): number | undefined {
-    const cleaned = value.replace(/[R$\s.]/g, '').replace(',', '.');
+    const cleaned = value.replace(/[€\s.]/g, '').replace(',', '.');
     const num = parseFloat(cleaned);
     if (isNaN(num)) return undefined;
     // If value looks like "5" but the original had "mil/k", multiply
@@ -104,7 +104,7 @@ export function extractDnaFromMessage(text: string): Partial<LeadDna> {
         if (avgTicket) {
             signals.push({
                 type: 'TICKET',
-                value: `R$ ${avgTicket.toLocaleString('pt-BR')}`,
+                value: `€ ${avgTicket.toLocaleString('pt-PT')}`,
                 confidence: 0.8,
                 extractedAt: timestamp,
             });
@@ -118,7 +118,7 @@ export function extractDnaFromMessage(text: string): Partial<LeadDna> {
         if (revenue) {
             signals.push({
                 type: 'REVENUE',
-                value: `R$ ${revenue.toLocaleString('pt-BR')}`,
+                value: `€ ${revenue.toLocaleString('pt-PT')}`,
                 confidence: 0.78,
                 extractedAt: timestamp,
             });

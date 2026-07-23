@@ -16,7 +16,7 @@ const mock = {
     title: 'Proposta PROP-2',
     company: 'Empresa',
     stageLabel: 'Negociação',
-    valueBRL: 10128.1,
+    valueEUR: 10128.1,
   },
   contact: {
     name: 'Carla Gomes',
@@ -44,15 +44,15 @@ const mock = {
   ] as TimelineItem[],
 };
 
-function formatCurrencyBRL(value: number): string {
+function formatCurrencyEUR(value: number): string {
   try {
-    return new Intl.NumberFormat('pt-BR', {
+    return new Intl.NumberFormat('pt-PT', {
       style: 'currency',
-      currency: 'BRL',
+      currency: 'EUR',
       maximumFractionDigits: 2,
     }).format(value);
   } catch {
-    return `R$ ${value.toFixed(2)}`;
+    return `€ ${value.toFixed(2)}`;
   }
 }
 
@@ -121,7 +121,7 @@ export default function DealJobsMockClient() {
           </div>
 
           <div className="flex items-center gap-2">
-            <Badge tone="success">{formatCurrencyBRL(mock.deal.valueBRL)}</Badge>
+            <Badge tone="success">{formatCurrencyEUR(mock.deal.valueEUR)}</Badge>
           </div>
         </header>
 

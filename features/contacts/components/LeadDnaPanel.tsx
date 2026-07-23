@@ -62,7 +62,7 @@ function MoneyField({ icon, label, value }: { icon: string; label: string; value
                 fontSize: 15, fontWeight: 700,
                 color: '#4ade80',
             }}>
-                R$ {value.toLocaleString('pt-BR')}
+                € {value.toLocaleString('pt-PT')}
             </div>
         </div>
     );
@@ -152,7 +152,7 @@ export function LeadDnaPanel({ contactId, initialDna }: Props) {
                             <p style={{
                                 marginTop: 10, fontSize: 11, color: 'rgba(255,255,255,0.25)',
                             }}>
-                                Atualizado: {new Date(dna.lastUpdated).toLocaleString('pt-BR')}
+                                Atualizado: {new Date(dna.lastUpdated).toLocaleString('pt-PT')}
                             </p>
                         </>
                     )}

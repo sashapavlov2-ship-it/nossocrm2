@@ -149,7 +149,7 @@ export function useCRMAgent(options: UseCRMAgentOptions = {}) {
           id: a.id,
           title: a.title,
           type: a.type,
-          time: new Date(a.date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+          time: new Date(a.date).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' }),
           completed: a.completed,
           deal: a.dealTitle,
         })),
@@ -244,7 +244,7 @@ export function useCRMAgent(options: UseCRMAgentOptions = {}) {
 
       return {
         success: true,
-        message: `Atividade "${title}" criada para ${new Date(date).toLocaleDateString('pt-BR')}`,
+        message: `Atividade "${title}" criada para ${new Date(date).toLocaleDateString('pt-PT')}`,
         activity: { id: newActivity.id, title, type, date },
       };
     },
@@ -290,7 +290,7 @@ export function useCRMAgent(options: UseCRMAgentOptions = {}) {
 
       return {
         success: true,
-        message: `Valor do deal "${deal.title}" atualizado de R$${oldValue.toLocaleString()} para R$${newValue.toLocaleString()}`,
+        message: `Valor do deal "${deal.title}" atualizado de €${oldValue.toLocaleString()} para €${newValue.toLocaleString()}`,
       };
     },
 
@@ -338,7 +338,7 @@ export function useCRMAgent(options: UseCRMAgentOptions = {}) {
 
       return {
         success: true,
-        message: `Deal "${title}" criado com valor de R$${value.toLocaleString()}`,
+        message: `Deal "${title}" criado com valor de €${value.toLocaleString()}`,
         deal: { id: newDeal.id, title, value, status: newDeal.status },
       };
     },
@@ -571,7 +571,7 @@ REGRAS:
 2. Seja conciso e direto nas respostas
 3. Quando criar algo, confirme o que foi criado
 4. Quando analisar, forneça insights acionáveis
-5. Use valores em Reais (R$) formatados
+5. Use valores em Euros (€) formatados
 6. Datas em formato brasileiro (dd/mm/aaaa)
 
 Você é proativo - se perceber oportunidades ou riscos, mencione-os.`,
