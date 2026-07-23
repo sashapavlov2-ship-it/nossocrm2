@@ -159,13 +159,15 @@ export async function POST(req: NextRequest) {
     let organizationId: string | undefined;
 
     // Chamada interna confiável (James IA via tool classifyLead corre server-side,
-    // sem cookie): Authorization: Bearer <INTERNAL_API_SECRET>. O secret é server-only
-    // (nunca chega ao browser) e a org vem do body, que aqui é confiável porque foi
-    // resolvida a partir da sessão autenticada no contexto que invocou a tool.
-    const internalSecret = process.env.INTERNAL_API_SECRET;
+    // sem cookie): Authorization: Bearer <service role key>. Reusa a chave que já
+    // existe no ambiente (mesma que o admin client) — server-only, nunca chega ao
+    // browser, e quem a tiver já tem acesso total à BD, por isso não abre vetor novo.
+    // A org vem do body, confiável aqui porque foi resolvida a partir da sessão
+    // autenticada no contexto que invocou a tool. Mesmo padrão do webhook-in→edge.
+    const serviceKey = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
     const authHeader = req.headers.get('authorization') ?? '';
     const isInternalCall =
-        !!internalSecret && authHeader === `Bearer ${internalSecret}`;
+        !!serviceKey && authHeader === `Bearer ${serviceKey}`;
 
     if (isInternalCall) {
         supabase = createStaticAdminClient();

@@ -1600,14 +1600,14 @@ export function createCRMTools(context: CRMCallOptions, userId: string) {
                         ?? process.env.VERCEL_URL
                         ?? 'http://localhost:3000';
                     const url = `${baseUrl.replace(/\/$/, '')}/api/ai/classify-lead`;
-                    const internalSecret = process.env.INTERNAL_API_SECRET;
+                    // Chamada interna server-side (sem cookie): autentica-se com a service
+                    // role key já presente no ambiente, para a route não a rejeitar (fail-closed).
+                    const serviceKey = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
                     const resp = await fetch(url, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
-                            // Chamada interna server-side (sem cookie): autentica-se com o
-                            // secret partilhado para a route não a rejeitar (fail-closed).
-                            ...(internalSecret ? { Authorization: `Bearer ${internalSecret}` } : {}),
+                            ...(serviceKey ? { Authorization: `Bearer ${serviceKey}` } : {}),
                         },
                         body: JSON.stringify({ contact_id, organization_id: organizationId }),
                     });
