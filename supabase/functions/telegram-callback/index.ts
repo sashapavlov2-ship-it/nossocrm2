@@ -1,4 +1,11 @@
 /**
+ * ⚠️ STALE — NÃO DEPLOYAR ESTE FICHEIRO POR CIMA DE PRODUÇÃO.
+ * A função viva corre no projeto Supabase DS Auto (gfaanktelakrxbrlqpvq),
+ * está na v19 (multi-tenant white-label, token via env, auth gate por
+ * x-telegram-bot-api-secret-token, scoping por tenant_id, features F1) e é a
+ * FONTE DE VERDADE. Este ficheiro é uma cópia antiga single-tenant no repo do
+ * nossocrm; deployá-lo revertia a produção e partia o DS Auto. Verificado 23/07.
+ *
  * telegram-callback — recebe callback_query dos botões inline do Telegram.
  * Quando o utilizador carrega em "Contactado", actualiza contacted_at no Supabase
  * e responde ao Telegram para remover o ícone de loading.

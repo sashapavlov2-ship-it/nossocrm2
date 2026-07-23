@@ -1,4 +1,8 @@
 /**
+ * ⚠️ STALE — confirmar projeto-alvo antes de deployar. A versão viva está no
+ * projeto DS Auto (gfaanktelakrxbrlqpvq) v8 com verify_jwt=true no gateway.
+ * NÃO está deployada no projeto nossocrm (utnwchsyfmdxsgxbgurk). Verificado 23/07.
+ *
  * classify-lead — Edge Function de classificação de leads.
  *
  * Recebe contact_id + organization_id, lê dados do lead (contact,

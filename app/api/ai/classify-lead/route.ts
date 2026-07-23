@@ -158,7 +158,19 @@ export async function POST(req: NextRequest) {
     let supabase;
     let organizationId: string | undefined;
 
-    if (user) {
+    // Chamada interna confiável (James IA via tool classifyLead corre server-side,
+    // sem cookie): Authorization: Bearer <INTERNAL_API_SECRET>. O secret é server-only
+    // (nunca chega ao browser) e a org vem do body, que aqui é confiável porque foi
+    // resolvida a partir da sessão autenticada no contexto que invocou a tool.
+    const internalSecret = process.env.INTERNAL_API_SECRET;
+    const authHeader = req.headers.get('authorization') ?? '';
+    const isInternalCall =
+        !!internalSecret && authHeader === `Bearer ${internalSecret}`;
+
+    if (isInternalCall) {
+        supabase = createStaticAdminClient();
+        organizationId = body.organization_id;
+    } else if (user) {
         supabase = supabaseSession;
         const { data: member } = await supabase
             .from('organization_members')
@@ -168,7 +180,8 @@ export async function POST(req: NextRequest) {
             .maybeSingle();
         organizationId = member?.organization_id;
     } else {
-        // Sem sessão: exigir API key válida (n8n / integrações). A org vem da key.
+        // Sem sessão nem secret interno: exigir API key válida (n8n / integrações).
+        // A org vem da key, nunca do body.
         const auth = await authPublicApi(req);
         if (!auth.ok) {
             return NextResponse.json(auth.body, { status: auth.status });
